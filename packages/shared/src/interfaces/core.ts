@@ -20,6 +20,7 @@ export interface IGamePlayer extends IPlayerBase {
     isReady: boolean;
     role: PlayerRole;
     handCount: number;
+    cards: ICard[];
     isOffline: boolean;
     onlineStatus: 'ONLINE' | 'AWAY';
 }

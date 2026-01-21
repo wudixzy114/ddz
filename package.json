@@ -1,0 +1,13 @@
+{
+  "name": "ddz-pro-monorepo",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "dev:client": "pnpm --filter @ddz/client dev",
+    "dev:server": "pnpm --filter @ddz/server start:dev",
+    "dev": "concurrently \"pnpm --filter @ddz/shared dev\" \"pnpm --filter @ddz/server start:dev\" \"pnpm --filter @ddz/client dev\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

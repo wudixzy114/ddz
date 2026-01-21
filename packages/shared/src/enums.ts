@@ -44,10 +44,13 @@ export enum CardType {
     TRIPLE = 'TRIPLE',           // 三张
     TRIPLE_WITH_ONE = 'TRIPLE_WITH_ONE', // 三带一
     TRIPLE_WITH_PAIR = 'TRIPLE_WITH_PAIR', // 三带二
+    QUADPLEX_WITH_SINGLE = 'QUADPLEX_WITH_SINGLE', // 四带两张单牌
+    QUADPLEX_WITH_PAIR = 'QUADPLEX_WITH_PAIR', // 四带两对
     STRAIGHT = 'STRAIGHT',       // 顺子
     STRAIGHT_PAIR = 'STRAIGHT_PAIR', // 连对
     PLANE = 'PLANE',             // 飞机
-    PLANE_WITH_WING = 'PLANE_WITH_WING', // 飞机带翅膀
+    PLANE_WITH_SINGLE = 'PLANE_WITH_SINGLE', // 飞机带单张
+    PLANE_WITH_PAIR = 'PLANE_WITH_PAIR', // 飞机带两对
     BOMB = 'BOMB',               // 炸弹
     ROCKET = 'ROCKET',           // 王炸
     INVALID = 'INVALID',         // 非法牌型

@@ -77,22 +77,59 @@ export class PokerHelper {
         }
 
         if (len >= 5 && maxRepeat === 1) {
-            const hasSpecial = sorted.some(c => c.rank >= Rank.Two);
-            if (!hasSpecial) {
-                let isStraight = true;
-                for (let i = 0; i < len - 1; i++) {
-                    if (sorted[i].rank !== sorted[i + 1].rank + 1) {
-                        isStraight = false;
-                        break;
-                    }
-                }
-                if (isStraight) {
-                    return {type: CardType.STRAIGHT, value: sorted[0].rank};
-                }
+            if (this.isConsecutive(uniqueRanks)) {
+                return {type: CardType.STRAIGHT, value: uniqueRanks[0]};
             }
         }
 
-        // TODO
+        if (len >= 6 && len % 2 === 0 && maxRepeat === 2 && uniqueRanks.length === len / 2) {
+            if (this.isConsecutive(uniqueRanks)) {
+                return {type: CardType.STRAIGHT_PAIR, value: uniqueRanks[0]};
+            }
+        }
+
+        if (len === 6 && maxRepeat === 4) {
+            const mainRank = uniqueRanks.find(r => counts[r] === 4);
+            return {type: CardType.QUADPLEX_WITH_SINGLE, value: mainRank!};
+        }
+
+        if (len === 8 && maxRepeat === 4 && (uniqueRanks.length == 3 || uniqueRanks.length === 2)) {
+            const mainRank = uniqueRanks.find(r => counts[r] === 4);
+            const pairs = uniqueRanks.filter(r => counts[r] === 2);
+            if (pairs.length === 2 || (uniqueRanks.length === 2 && counts[uniqueRanks.find(r => r !== mainRank)!] === 4)) {
+                return {type: CardType.QUADPLEX_WITH_PAIR, value: mainRank!};
+            }
+        }
+
+        const tripleRanks = uniqueRanks.filter(r => counts[r] >= 3).sort((a, b) => b - a);
+        if (tripleRanks.length >= 2) {
+            for (let i = 0; i <= tripleRanks.length - 2; i++) {
+                for (let j = tripleRanks.length; j >= i + 2; j--) {
+                    const subTriples = tripleRanks.slice(i, j);
+                    if (this.isConsecutive(subTriples)) {
+                        const tripleCount = subTriples.length;
+                        if (len === tripleCount * 3) {
+                            return {type: CardType.PLANE, value: subTriples[0]};
+                        }
+                        if (len === tripleCount * 4) {
+                            return {type: CardType.PLANE_WITH_SINGLE, value: subTriples[0]};
+                        }
+                        if (len === tripleCount * 5) {
+                            const otherCards = [...uniqueRanks];
+                            subTriples.forEach(r => {
+                                const idx = otherCards.indexOf(r);
+                                otherCards.splice(idx, 1);
+                            })
+
+                            const allPairs = otherCards.every(r => counts[r] === 2 || counts[r] === 4);
+                            if (allPairs && otherCards.length === tripleCount) {
+                                return {type: CardType.PLANE_WITH_PAIR, value: subTriples[0]};
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         return {type: CardType.INVALID, value: 0};
     }
@@ -115,5 +152,13 @@ export class PokerHelper {
         }
 
         return false;
+    }
+
+    private static isConsecutive(ranks: number[]): boolean {
+        for (let i = 0; i < ranks.length - 1; i++) {
+            if (ranks[i] !== ranks[i + 1] + 1) return false;
+            if (ranks[i] >= Rank.Two || ranks[i + 1] >= Rank.Two) return false;
+        }
+        return true;
     }
 }

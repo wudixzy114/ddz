@@ -43,7 +43,7 @@ export class PokerHelper {
             counts[c.rank] = (counts[c.rank] || 0) + 1;
         })
 
-        const uniqueRanks = Object.keys(counts).map(Number);
+        const uniqueRanks = Object.keys(counts).map(Number).sort((a, b) => b - a);
         const maxRepeat = Math.max(...Object.values(counts));
 
         if (len === 2 && sorted[0].rank === Rank.BigJoker && sorted[1].rank === Rank.SmallJoker) {
@@ -95,19 +95,24 @@ export class PokerHelper {
 
         if (len === 8 && maxRepeat === 4 && (uniqueRanks.length == 3 || uniqueRanks.length === 2)) {
             const mainRank = uniqueRanks.find(r => counts[r] === 4);
-            const pairs = uniqueRanks.filter(r => counts[r] === 2);
-            if (pairs.length === 2 || (uniqueRanks.length === 2 && counts[uniqueRanks.find(r => r !== mainRank)!] === 4)) {
-                return {type: CardType.QUADPLEX_WITH_PAIR, value: mainRank!};
+            if (mainRank) {
+                const kickers = uniqueRanks.filter(r => r !== mainRank);
+                const isAllPairs = kickers.every(r => counts[r] === 2 || counts[r] === 4);
+                if (isAllPairs) {
+                    return {type: CardType.QUADPLEX_WITH_PAIR, value: mainRank};
+                }
             }
         }
 
-        const tripleRanks = uniqueRanks.filter(r => counts[r] >= 3).sort((a, b) => b - a);
+        const tripleRanks = uniqueRanks.filter(r => counts[r] >= 3);
         if (tripleRanks.length >= 2) {
-            for (let i = 0; i <= tripleRanks.length - 2; i++) {
-                for (let j = tripleRanks.length; j >= i + 2; j--) {
+            for (let i = 0; i < tripleRanks.length - 1; i++) {
+                for (let j = tripleRanks.length; j > i; j--) {
                     const subTriples = tripleRanks.slice(i, j);
+                    if (subTriples.length < 2) continue;
                     if (this.isConsecutive(subTriples)) {
                         const tripleCount = subTriples.length;
+                        const mainValue = subTriples[0];
                         if (len === tripleCount * 3) {
                             return {type: CardType.PLANE, value: subTriples[0]};
                         }
@@ -115,15 +120,22 @@ export class PokerHelper {
                             return {type: CardType.PLANE_WITH_SINGLE, value: subTriples[0]};
                         }
                         if (len === tripleCount * 5) {
-                            const otherCards = [...uniqueRanks];
-                            subTriples.forEach(r => {
-                                const idx = otherCards.indexOf(r);
-                                otherCards.splice(idx, 1);
-                            })
-
-                            const allPairs = otherCards.every(r => counts[r] === 2 || counts[r] === 4);
-                            if (allPairs && otherCards.length === tripleCount) {
-                                return {type: CardType.PLANE_WITH_PAIR, value: subTriples[0]};
+                            const remainingCounts = {...counts};
+                            subTriples.forEach(r => remainingCounts[r] -= 3);
+                            let pairCapacity = 0;
+                            let invalid = false;
+                            for (const r of Object.keys(remainingCounts).map(Number)) {
+                                const c = remainingCounts[r];
+                                if (c === 0) continue;
+                                if (c === 2) pairCapacity += 1;
+                                else if (c === 4) pairCapacity += 2;
+                                else {
+                                    invalid = true;
+                                    break;
+                                }
+                            }
+                            if (!invalid && pairCapacity === tripleCount) {
+                                return {type: CardType.PLANE_WITH_PAIR, value: mainValue};
                             }
                         }
                     }
@@ -155,6 +167,7 @@ export class PokerHelper {
     }
 
     private static isConsecutive(ranks: number[]): boolean {
+        if (ranks.length === 0) return false;
         for (let i = 0; i < ranks.length - 1; i++) {
             if (ranks[i] !== ranks[i + 1] + 1) return false;
             if (ranks[i] >= Rank.Two || ranks[i + 1] >= Rank.Two) return false;

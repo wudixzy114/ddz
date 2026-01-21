@@ -145,4 +145,15 @@ interface ExceptionPayload {
     message: string;
 }
 
-export { type BidLandlordDto, CONSTANTS, CardType, type ExceptionPayload, type GameOverPayload, type GameStartPayload, type ICard, type IGamePlayer, type IPlayerBase, type IRoom, type JoinRoomDto, type LandlordConfirmedPayload, type PlayCardBroadcast, type PlayCardDto, PlayerRole, Rank, RoomState, SocketEvents, Suit };
+declare class PokerHelper {
+    static createDeck(): ICard[];
+    static shuffle(deck: ICard[]): ICard[];
+    static sortCards(cards: ICard[]): ICard[];
+    static analyzeCardType(cards: ICard[]): {
+        type: CardType;
+        value: number;
+    };
+    static canBeat(prevCards: ICard[], newCards: ICard[]): boolean;
+}
+
+export { type BidLandlordDto, CONSTANTS, CardType, type ExceptionPayload, type GameOverPayload, type GameStartPayload, type ICard, type IGamePlayer, type IPlayerBase, type IRoom, type JoinRoomDto, type LandlordConfirmedPayload, type PlayCardBroadcast, type PlayCardDto, PlayerRole, PokerHelper, Rank, RoomState, SocketEvents, Suit };

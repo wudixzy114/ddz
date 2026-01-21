@@ -1,11 +1,13 @@
 import {Injectable} from "@nestjs/common";
-import {CONSTANTS, IGamePlayer, IRoom, PlayerRole, RoomState} from "@ddz/shared";
+import {CONSTANTS, GameStartPayload, ICard, IGamePlayer, IRoom, PlayerRole, PokerHelper, RoomState} from "@ddz/shared";
 import {v4 as uuidv4} from 'uuid'
 
 @Injectable()
 export class RoomManager {
     private rooms: Map<string, IRoom> = new Map();
     private playerRoomMap: Map<string, string> = new Map()
+    private tempHandCards: Map<string, ICard[]> = new Map()
+    private tempBottomCards: Map<string, ICard[]> = new Map()
 
     createRoom(): IRoom {
         const roomId = this.generateRoomId();
@@ -87,6 +89,50 @@ export class RoomManager {
         const roomId = this.playerRoomMap.get(socketId);
         if (!roomId) return undefined;
         return this.rooms.get(roomId);
+    }
+
+    playerReady(socketId: string): { room: IRoom, isAllReady: boolean } {
+        const room = this.getRoomBySocketId(socketId);
+        if (!room) throw new Error('不在房间内');
+
+        const player = room.players.find(p => p.socketId === socketId);
+        if (player) player.isReady = true;
+
+        const isAllReady = room.players.length === CONSTANTS.MAX_PLAYERS && room.players.every(p => p.isReady);
+        return {room, isAllReady};
+    }
+
+    startGame(roomId: string): Record<string, GameStartPayload> {
+        const room = this.rooms.get(roomId);
+        if (!room) throw new Error('Room not found');
+
+        const deck = PokerHelper.shuffle(PokerHelper.createDeck());
+        const p1Cards = deck.slice(0, 17);
+        const p2Cards = deck.slice(17, 34);
+        const p3Cards = deck.slice(34, 51);
+        const bottomCards = deck.slice(51);
+
+        this.tempHandCards.set(room.players[0].userId, PokerHelper.sortCards(p1Cards));
+        this.tempHandCards.set(room.players[1].userId, PokerHelper.sortCards(p2Cards));
+        this.tempHandCards.set(room.players[2].userId, PokerHelper.sortCards(p3Cards));
+        this.tempBottomCards.set(room.id, bottomCards);
+
+        room.state = RoomState.BIDDING;
+
+        const firstTurnIndex = Math.floor(Math.random() * 3);
+        room.currentTurn = firstTurnIndex;
+
+        const payloads: Record<string, GameStartPayload> = {}
+        room.players.forEach((p, index) => {
+            const cards = this.tempHandCards.get(p.userId)!;
+            payloads[p.socketId] = {
+                handCards: cards,
+                bottomCardsCount: 3,
+                firstTurnSeat: firstTurnIndex
+            }
+        })
+
+        return payloads;
     }
 
     private generateRoomId(): string {

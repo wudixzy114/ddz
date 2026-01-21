@@ -90,10 +90,107 @@ var CONSTANTS = {
   ROOM_ID_LENGTH: 6
   // 房间号长度
 };
+
+// src/utils/poker.helper.ts
+var PokerHelper = class {
+  static createDeck() {
+    const deck = [];
+    for (let r = 3; r <= 15; r++) {
+      for (let s = 1; s <= 4; s++) {
+        deck.push({ rank: r, suit: s });
+      }
+    }
+    deck.push({ rank: 16 /* SmallJoker */, suit: 1 /* Spade */ });
+    deck.push({ rank: 17 /* BigJoker */, suit: 2 /* Heart */ });
+    return deck;
+  }
+  static shuffle(deck) {
+    const newDeck = [...deck];
+    for (let i = newDeck.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [newDeck[i], newDeck[j]] = [newDeck[j], newDeck[i]];
+    }
+    return newDeck;
+  }
+  static sortCards(cards) {
+    return [...cards].sort((a, b) => {
+      if (b.rank !== a.rank) {
+        return b.rank - a.rank;
+      }
+      return b.suit - a.suit;
+    });
+  }
+  static analyzeCardType(cards) {
+    const len = cards.length;
+    if (len === 0) return { type: "INVALID" /* INVALID */, value: 0 };
+    const sorted = this.sortCards(cards);
+    const counts = {};
+    sorted.forEach((c) => {
+      counts[c.rank] = (counts[c.rank] || 0) + 1;
+    });
+    const uniqueRanks = Object.keys(counts).map(Number);
+    const maxRepeat = Math.max(...Object.values(counts));
+    if (len === 2 && sorted[0].rank === 17 /* BigJoker */ && sorted[1].rank === 16 /* SmallJoker */) {
+      return { type: "ROCKET" /* ROCKET */, value: 999 };
+    }
+    if (len === 4 && maxRepeat === 4) {
+      return { type: "BOMB" /* BOMB */, value: sorted[0].rank };
+    }
+    if (len === 1) {
+      return { type: "SINGLE" /* SINGLE */, value: sorted[0].rank };
+    }
+    if (len === 2 && maxRepeat === 2) {
+      return { type: "PAIR" /* PAIR */, value: sorted[0].rank };
+    }
+    if (len === 3 && maxRepeat === 3) {
+      return { type: "TRIPLE" /* TRIPLE */, value: sorted[0].rank };
+    }
+    if (len === 4 && maxRepeat === 3) {
+      const mainRank = uniqueRanks.find((r) => counts[r] === 3);
+      return { type: "TRIPLE_WITH_ONE" /* TRIPLE_WITH_ONE */, value: mainRank };
+    }
+    if (len === 5 && maxRepeat === 3 && uniqueRanks.length === 2) {
+      const mainRank = uniqueRanks.find((r) => counts[r] === 3);
+      return { type: "TRIPLE_WITH_PAIR" /* TRIPLE_WITH_PAIR */, value: mainRank };
+    }
+    if (len >= 5 && maxRepeat === 1) {
+      const hasSpecial = sorted.some((c) => c.rank >= 15 /* Two */);
+      if (!hasSpecial) {
+        let isStraight = true;
+        for (let i = 0; i < len - 1; i++) {
+          if (sorted[i].rank !== sorted[i + 1].rank + 1) {
+            isStraight = false;
+            break;
+          }
+        }
+        if (isStraight) {
+          return { type: "STRAIGHT" /* STRAIGHT */, value: sorted[0].rank };
+        }
+      }
+    }
+    return { type: "INVALID" /* INVALID */, value: 0 };
+  }
+  static canBeat(prevCards, newCards) {
+    const prev = this.analyzeCardType(prevCards);
+    const curr = this.analyzeCardType(newCards);
+    if (curr.type === "INVALID" /* INVALID */) return false;
+    if (curr.type === "ROCKET" /* ROCKET */) return true;
+    if (prev.type === "ROCKET" /* ROCKET */) return false;
+    if (curr.type === "BOMB" /* BOMB */) {
+      if (prev.type !== "BOMB" /* BOMB */) return true;
+      return curr.value > prev.value;
+    }
+    if (curr.type === prev.type && newCards.length === prevCards.length) {
+      return curr.value > prev.value;
+    }
+    return false;
+  }
+};
 export {
   CONSTANTS,
   CardType,
   PlayerRole,
+  PokerHelper,
   Rank,
   RoomState,
   SocketEvents,
